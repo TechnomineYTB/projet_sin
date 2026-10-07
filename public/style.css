@@ -1,0 +1,17 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, sans-serif;
+  background: #f4f6f8;
+  color: #222;
+  line-height: 1.6;
+  background-image: url(images/Clouds.jpg);
+  background-size:cover;
+}
+
+
+.main h1{
+    color: red;
+    text-align: center;
+    
+}
