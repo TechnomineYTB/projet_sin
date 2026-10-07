@@ -1,6 +1,6 @@
 # Setup
-`sudo apt install nodejs
-git clone https://TechnomineYTB/projet_sin
+`sudo apt install nodejs &&
+git clone https://github.com/TechnomineYTB/projet_sin.git &&
 cd projet_sin-main
 node server.js
 `
