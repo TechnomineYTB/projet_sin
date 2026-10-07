@@ -1,10 +1,9 @@
 # Setup
-`sudo apt install nodejs`
-`git clone https://github.com/TechnomineYTB/projet_sin.git`
-`cd projet_sin`
-`node server.js`
+Installer Node.js
+récupérer le projet et entrer dans le dossiers principale
+taper `node server.js`
 
-Sur le navigateur :
+Sur votre navigateur :
 `0.0.0.0:3000`
 
 
