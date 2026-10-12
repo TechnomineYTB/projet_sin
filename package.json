@@ -1,0 +1,16 @@
+{
+  "name": "mon-site",
+  "version": "1.0.0",
+  "description": "Serveur Node.js simple qui affiche une page HTML/CSS avec des images",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7",
+    "serialport": "^13.0.0",
+    "socket.io": "^4.8.4",
+    "url": "^0.11.4"
+  }
+}
