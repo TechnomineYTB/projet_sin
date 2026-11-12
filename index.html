@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32 – Pupitre</title>
+<style>
+  :root {
+    --bg: #e8edef;
+    --panel: #f7f9f9;
+    --ink: #13242c;
+    --muted: #5b6e76;
+    --line: #c4d0d5;
+    --on: #e8590c;
+    --ok: #2b8a5a;
+    --off: #8a98a0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10191d; --panel: #18252b; --ink: #e6eef1;
+      --muted: #8fa3ac; --line: #2a3b43; --on: #ff8a47; --ok: #4cc58a; --off: #5d6f77;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 20px 48px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.01em; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: .95rem; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--off); }
+  .status.online .dot { background: var(--ok); }
+  .status.online { color: var(--ink); }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; margin-top: 24px; }
+  .led { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .led h2 { margin: 0 0 4px; font-size: 1.1rem; }
+  .led p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+  button.switch { position: relative; width: 96px; height: 52px; border-radius: 26px; border: 1px solid var(--line);
+    background: var(--off); cursor: pointer; padding: 0; flex: none; transition: background .2s; }
+  button.switch::after { content: ""; position: absolute; top: 4px; left: 4px; width: 42px; height: 42px;
+    border-radius: 50%; background: #fff; transition: transform .2s; }
+  button.switch[aria-checked="true"] { background: var(--on); }
+  button.switch[aria-checked="true"]::after { transform: translateX(44px); }
+  button.switch:disabled { opacity: .45; cursor: not-allowed; }
+  button.switch:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 0; }
+  dt { color: var(--muted); font-size: .85rem; }
+  dd { margin: 2px 0 0; font-size: 1.5rem; font-variant-numeric: tabular-nums; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  dd small { font-size: .8rem; color: var(--muted); margin-left: 2px; }
+
+  #msg { min-height: 1.4em; margin-top: 16px; color: var(--on); font-size: .95rem; }
+  @media (max-width: 460px) { dl { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pupitre ESP32</h1>
+    <span id="status" class="status"><span class="dot"></span><span id="statusText">Connexion au serveur…</span></span>
+  </header>
+
+  <section class="panel led">
+    <div>
+      <h2>LED intégrée</h2>
+      <p id="ledText">État inconnu</p>
+    </div>
+    <button id="ledBtn" class="switch" role="switch" aria-checked="false" aria-label="LED intégrée" disabled></button>
+  </section>
+
+  <section class="panel">
+    <dl>
+      <div><dt>Signal WiFi</dt><dd id="rssi">–<small>dBm</small></dd></div>
+      <div><dt>Mémoire libre</dt><dd id="heap">–<small>Ko</small></dd></div>
+      <div><dt>Allumée depuis</dt><dd id="uptime">–</dd></div>
+    </dl>
+    <div id="msg" role="status" aria-live="polite"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let ws, state = { online: false, led: false };
+
+function fmtUptime(s) {
+  if (s == null) return '–';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h ? `${h} h ${m} min` : m ? `${m} min ${sec} s` : `${sec} s`;
+}
+
+function render() {
+  const online = state.online;
+  $('status').classList.toggle('online', online);
+  $('statusText').textContent = online ? 'ESP32 connecté' : 'ESP32 hors ligne';
+  $('ledBtn').disabled = !online;
+  $('ledBtn').setAttribute('aria-checked', String(!!state.led));
+  $('ledText').textContent = online ? (state.led ? 'Allumée' : 'Éteinte') : 'État inconnu';
+  $('rssi').firstChild.textContent = online && state.rssi != null ? state.rssi : '–';
+  $('heap').firstChild.textContent = online && state.heap != null ? Math.round(state.heap / 1024) : '–';
+  $('uptime').textContent = online ? fmtUptime(state.uptime) : '–';
+}
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ui`);
+  ws.onopen = () => { $('msg').textContent = ''; };
+  ws.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'state') { state = m; $('msg').textContent = ''; render(); }
+    if (m.type === 'error') $('msg').textContent = m.text;
+  };
+  ws.onclose = () => {
+    state.online = false; render();
+    $('statusText').textContent = 'Serveur injoignable, nouvelle tentative…';
+    setTimeout(connect, 2000);
+  };
+}
+
+$('ledBtn').addEventListener('click', () => {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'led', value: !state.led }));
+});
+
+render();
+connect();
+</script>
+</body>
+</html>

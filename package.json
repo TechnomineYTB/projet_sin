@@ -1,0 +1,11 @@
+{
+  "name": "esp32-pi",
+  "version": "1.0.0",
+  "description": "Interface web sur Raspberry Pi pour piloter un ESP32 en WiFi",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
+  }
+}
