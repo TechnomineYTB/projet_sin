@@ -1,3 +1,6 @@
+.body{
+    background-image: url(src/clouds.jpg);
+}
 :root {
     --bg: #e8edef;
     --panel: #f7f9f9;
